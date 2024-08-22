@@ -9,6 +9,9 @@
   .arena {
     border-color: mat.get-theme-color($theme, neutral, 90);
   }
+  .bar {
+    background-color: mat.get-theme-color($theme, neutral, 90);
+  }
 }
 
 @mixin typography($theme) {
