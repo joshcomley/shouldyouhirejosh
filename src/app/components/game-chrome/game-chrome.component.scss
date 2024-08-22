@@ -5,11 +5,9 @@
   overflow: hidden;
 }
 
-.bar {
+.bar,
+.laser {
   position: absolute;
-  bottom: 10px;
-  width: 50px;
-  height: 6px;
 }
 
 .skill {

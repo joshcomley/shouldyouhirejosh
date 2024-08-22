@@ -11,6 +11,7 @@ import { SkillBotComponent } from './skill-bot/skill-bot.component';
 import { CommonModule } from '@angular/common';
 import { SkillBot } from './skill-bot';
 import { HtmlHelper } from '../../services/html-helper.service';
+import { Box } from './box';
 
 enum Direction {
   None = 0,
@@ -26,9 +27,11 @@ enum Direction {
 })
 export class GameChromeComponent {
   direction: Direction = Direction.None;
+  spacePressed = signal(0);
   leftPressed = signal(0);
   rightPressed = signal(0);
   xPosition = signal(0);
+  laserXPosition = signal(0);
   skills = signal([
     new SkillBot(new Skill('C#', true)),
     new SkillBot(new Skill('PHP', false)),
@@ -37,9 +40,16 @@ export class GameChromeComponent {
   ]);
   skillsInArena = signal<Array<SkillBot>>([]);
   skillsCaptured = signal<Array<SkillBot>>([]);
+  skillsRejected = signal<Array<SkillBot>>([]);
   width = signal(500);
   height = signal(500);
+  laserWidth = signal(4);
+  laserLength = signal(1000);
+  barWidth = signal(50);
+  barYPos = signal(10);
+  barHeight = signal(6);
   @ViewChild('bar') bar!: ElementRef<HTMLDivElement>;
+  @ViewChild('laser') laser!: ElementRef<HTMLDivElement>;
 
   @HostListener('window:keydown', ['$event'])
   keyDownEvent(event: KeyboardEvent) {
@@ -50,11 +60,15 @@ export class GameChromeComponent {
       case 'ArrowLeft':
         this.leftPressed.set(new Date().getTime());
         break;
+      case ' ':
+        this.spacePressed.set(new Date().getTime());
+        break;
     }
   }
 
   @HostListener('window:keyup', ['$event'])
   keyUpEvent(event: KeyboardEvent) {
+    console.log(event.key);
     switch (event.key) {
       case 'ArrowRight':
         this.rightPressed.set(0);
@@ -62,16 +76,22 @@ export class GameChromeComponent {
       case 'ArrowLeft':
         this.leftPressed.set(0);
         break;
+      case ' ':
+        this.spacePressed.set(0);
+        const items = this.skillsInArena();
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          item.locked = false;
+          item.start = true;
+        }
+        break;
     }
   }
 
   constructor(private htmlHelper: HtmlHelper) {
     effect(() => {
       this.bar.nativeElement.style.left = `${this.xPosition()}px`;
-      const items = this.skillsInArena();
-      // for (let i = 0; i < items.length; i++) {
-      //   const item = items[i];
-      // }
+      this.laser.nativeElement.style.left = `${this.laserXPosition()}px`;
     });
     setInterval(() => {
       if (this.bar) {
@@ -80,24 +100,52 @@ export class GameChromeComponent {
           this.bar.nativeElement.parentElement!,
           'width'
         );
-        var barSizeValue = this.htmlHelper.getComputedStyleNumericValue(
-          this.bar.nativeElement,
-          'width'
-        );
+        var barWidth = this.barWidth();
+        let move = 0;
         if (this.rightPressed() > this.leftPressed()) {
           // move right
-          if (value < containerSizeValue - barSizeValue) {
-            this.xPosition.update((v) => v + 1);
+          if (value < containerSizeValue - barWidth) {
+            move = 1;
           }
         } else if (
           this.leftPressed() > this.rightPressed() &&
           this.xPosition() > 0
         ) {
           // move left
-          this.xPosition.update((v) => v - 1);
+          move = -1;
         }
-        console.log(this.xPosition());
-        const items = this.skillsInArena();
+
+        let items = this.skillsInArena();
+
+        if (move !== 0) {
+          this.xPosition.update((v) => v + move);
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.locked) {
+              const newX = item.xPos + move;
+              const reject = newX < 0;
+              const capture = newX > this.width() - item.width;
+              if (!reject && !capture) {
+                item.xPos = newX;
+              }
+              if (reject || capture) {
+                this.skillsInArena.update((skills) =>
+                  skills.filter((f) => f !== item)
+                );
+                const s = reject ? this.skillsRejected : this.skillsCaptured;
+                s.update((skills) => {
+                  skills.push(item);
+                  return skills;
+                });
+              }
+            }
+          }
+        }
+        items = this.skillsInArena();
+        this.laserXPosition.set(
+          this.xPosition() + (this.barWidth() - this.laserWidth()) / 2
+        );
+
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (item.xPos > -1 || item.width === 0) {
@@ -111,7 +159,7 @@ export class GameChromeComponent {
           const newY = -(item.height + 5);
           if (
             others.filter((o) =>
-              this.isSkillBotCollide(
+              this.isBoxCollide(
                 new SkillBot(
                   item.skill,
                   xPosAttempt,
@@ -153,6 +201,13 @@ export class GameChromeComponent {
           //   }
         }
         this.skillsInArena.set(items);
+        const laserBox = {
+          xPos: this.laserXPosition(),
+          yPos: this.height() - this.laserLength() - this.barYPos(),
+          width: this.laserWidth(),
+          height: this.laserLength() + 15,
+        } as Box;
+        let newLaserLength = 1000;
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (item.start) {
@@ -165,13 +220,26 @@ export class GameChromeComponent {
               }
             }
           }
+          if (this.isBoxCollide(laserBox, item)) {
+            const foundLaserLength =
+              this.height() - (item.yPos + this.barYPos() + item.height); // - 10 - item.height;
+            if (foundLaserLength < newLaserLength) {
+              newLaserLength = foundLaserLength;
+            }
+            if (this.spacePressed()) {
+              item.start = false;
+              item.locked = true;
+            } else {
+              item.start = true;
+              item.locked = false;
+            }
+          }
         }
+        this.laserLength.set(newLaserLength);
       }
     }, 1);
     this.loadNextSkill();
   }
-
-  public skillLoaded(event: SkillBotComponent) {}
 
   public loadNextSkill() {
     const skill =
@@ -201,14 +269,15 @@ export class GameChromeComponent {
     );
   }
 
-  public isSkillBotCollide(aRect: SkillBot, bRect: SkillBot) {
-    const aY = aRect.yPos + 1000;
-    const bY = bRect.yPos + 1000;
-    return !(
-      aY + aRect.height < bY ||
-      aY > bY + bRect.height ||
-      aRect.xPos + aRect.width < bRect.xPos ||
-      aRect.xPos > bRect.xPos + bRect.width
-    );
+  public isBoxCollide(aRect: Box, bRect: Box) {
+    const aY = aRect.yPos;
+    const bY = bRect.yPos;
+    const top1 = aY + aRect.height < bY;
+    const top2 = aY > bY + bRect.height;
+    const horizontal1 = aRect.xPos + aRect.width < bRect.xPos;
+    const horizontal2 = aRect.xPos > bRect.xPos + bRect.width;
+    const miss = top1 || top2 || horizontal1 || horizontal2;
+    const collide = !miss;
+    return collide;
   }
 }

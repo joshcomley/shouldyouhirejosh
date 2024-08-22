@@ -1,7 +1,9 @@
+import { Box } from './box';
 import { Skill } from './skill';
 
-export class SkillBot {
+export class SkillBot implements Box {
   public start: boolean = false;
+  public locked: boolean = false;
   public slowness = 4;
   public tick = 0;
   constructor(
