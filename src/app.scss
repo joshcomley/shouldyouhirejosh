@@ -1,0 +1,9 @@
+@font-face {
+  font-family: digilove;
+  src: url("fonts//digilove//Pixel\ Digivolve.otf") format("opentype");
+}
+
+.split {
+  display: grid;
+  grid-template-columns: [col] 1fr [col] auto;
+}

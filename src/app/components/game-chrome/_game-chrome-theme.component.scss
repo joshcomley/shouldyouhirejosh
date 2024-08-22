@@ -1,0 +1,29 @@
+@use 'sass:map';
+@use '@angular/material' as mat;
+
+@mixin colors($theme) {
+  .hirejc {
+    // Read the 50 hue from the primary color palette.
+    color: mat.get-theme-color($theme, primary, 50);
+  }
+  .arena {
+    border-color: mat.get-theme-color($theme, neutral, 90);
+  }
+}
+
+@mixin typography($theme) {
+  .hirejc {
+    // Get the large headline font from the theme.
+    font: mat.get-theme-typography($theme, headline-large, font);
+  }
+}
+
+@mixin theme($theme) {
+  @if mat.theme-has($theme, color) {
+    @include colors($theme);
+  }
+
+  @if mat.theme-has($theme, typography) {
+    @include typography($theme);
+  }
+}
