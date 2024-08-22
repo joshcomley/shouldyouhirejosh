@@ -16,8 +16,6 @@
 
 @mixin typography($theme) {
   .hirejc {
-    // Get the large headline font from the theme.
-    font: mat.get-theme-typography($theme, headline-large, font);
   }
 }
 

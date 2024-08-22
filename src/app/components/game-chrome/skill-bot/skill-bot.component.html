@@ -1,0 +1,10 @@
+<div
+  #self
+  class="skill-bot"
+  *ngIf="skill()"
+  [ngStyle]="{
+    visibility: skill().width > 0 && xPos() > -1 ? 'visible' : 'hidden'
+  }"
+>
+  {{ skill().skill.name }}
+</div>

@@ -1,6 +1,15 @@
 <div class="hirejc">
-  <div class="arena">
+  <div
+    class="arena"
+    [ngStyle]="{ width: width() + 'px', height: height() + 'px' }"
+  >
     <div class="bar" #bar></div>
-    <div class="skill" id="skill"></div>
+    <app-skill-bot
+      *ngFor="let skill of skillsInArena()"
+      (loaded)="skillLoaded($event)"
+      [xPos]="skill.xPos"
+      [yPos]="skill.yPos"
+      [skill]="skill"
+    ></app-skill-bot>
   </div>
 </div>
