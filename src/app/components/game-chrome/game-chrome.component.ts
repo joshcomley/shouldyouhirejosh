@@ -37,6 +37,10 @@ export class GameChromeComponent {
     new SkillBot(new Skill('PHP', false)),
     new SkillBot(new Skill('.NET', true)),
     new SkillBot(new Skill('Java', false)),
+    new SkillBot(new Skill('Dad jokes', true)),
+    new SkillBot(new Skill('EF Core', true)),
+    new SkillBot(new Skill('SQL', true)),
+    new SkillBot(new Skill('JavaScript', true)),
   ]);
   skillsInArena = signal<Array<SkillBot>>([]);
   skillsCaptured = signal<Array<SkillBot>>([]);
@@ -48,6 +52,7 @@ export class GameChromeComponent {
   barWidth = signal(50);
   barYPos = signal(10);
   barHeight = signal(6);
+  score = signal(0);
   @ViewChild('bar') bar!: ElementRef<HTMLDivElement>;
   @ViewChild('laser') laser!: ElementRef<HTMLDivElement>;
 
@@ -78,12 +83,7 @@ export class GameChromeComponent {
         break;
       case ' ':
         this.spacePressed.set(0);
-        const items = this.skillsInArena();
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i];
-          item.locked = false;
-          item.start = true;
-        }
+        this.clearLaser();
         break;
     }
   }
@@ -124,7 +124,7 @@ export class GameChromeComponent {
             if (item.locked) {
               const newX = item.xPos + move;
               const reject = newX < 0;
-              const capture = newX > this.width() - item.width;
+              const capture = newX >= this.width() - item.width;
               if (!reject && !capture) {
                 item.xPos = newX;
               }
@@ -137,10 +137,25 @@ export class GameChromeComponent {
                   skills.push(item);
                   return skills;
                 });
+                this.clearLaser();
               }
             }
           }
         }
+        let score = 0;
+        this.skillsCaptured().forEach((element) => {
+          if (element.skill.good) {
+            score++;
+          } else {
+            score--;
+          }
+        });
+        this.skillsRejected().forEach((element) => {
+          if (!element.skill.good) {
+            score++;
+          }
+        });
+        this.score.set(score);
         items = this.skillsInArena();
         this.laserXPosition.set(
           this.xPosition() + (this.barWidth() - this.laserWidth()) / 2
@@ -175,30 +190,9 @@ export class GameChromeComponent {
             item.yPos = newY;
             item.start = true;
             if (this.skills().length !== 0) {
-              setTimeout(() => {
-                this.loadNextSkill();
-              }, this.randomIntBetween(50, 800));
+              this.queueLoadNextSkill();
             }
           }
-
-          // event.skill().xPos = this.randomIntBetween(
-          //   0,
-          //   this.width() - event.skill().width
-          // );
-          // console.log(event.skill().skill.name + ': ' + event.skill().width);
-          // if (this.skillsInArena().length < 5 && this.skills().length > 0) {
-          //   this.loadNextSkill();
-          // }
-
-          //   if (this.isCollide(item, this.bar.nativeElement)) {
-          //     if (!item.classList.contains('hit')) {
-          //       item.classList.add('hit');
-          //     }
-          //   } else {
-          //     if (item.classList.contains('hit')) {
-          //       item.classList.remove('hit');
-          //     }
-          //   }
         }
         this.skillsInArena.set(items);
         const laserBox = {
@@ -208,6 +202,7 @@ export class GameChromeComponent {
           height: this.laserLength() + 15,
         } as Box;
         let newLaserLength = 1000;
+        let collidedItem: SkillBot | null = null;
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (item.start) {
@@ -217,28 +212,68 @@ export class GameChromeComponent {
               item.tick = 0;
               if (item.yPos > this.height()) {
                 item.start = false;
+                item.yPos = -(item.height + 5);
+                item.xPos = -1;
+                this.skillsInArena.update((skills) =>
+                  skills.filter((f) => f !== item)
+                );
+                this.skills.update((skills) => {
+                  skills.push(item);
+                  return skills;
+                });
+                this.queueLoadNextSkill();
               }
             }
           }
-          if (this.isBoxCollide(laserBox, item)) {
-            const foundLaserLength =
-              this.height() - (item.yPos + this.barYPos() + item.height); // - 10 - item.height;
+          if (
+            this.isBoxCollide(laserBox, item) &&
+            item.yPos + item.height < this.height() - this.barYPos()
+          ) {
+            const foundLaserLength = this.calculateLaserLength(item); // - 10 - item.height;
             if (foundLaserLength < newLaserLength) {
               newLaserLength = foundLaserLength;
+              collidedItem = item;
             }
-            if (this.spacePressed()) {
-              item.start = false;
-              item.locked = true;
-            } else {
+            if (!this.spacePressed()) {
               item.start = true;
               item.locked = false;
             }
           }
         }
-        this.laserLength.set(newLaserLength);
+        const lockedItem = items.find((i) => i.locked) ?? collidedItem;
+        if (lockedItem && this.spacePressed()) {
+          lockedItem.start = false;
+          lockedItem.locked = true;
+          this.laserLength.set(this.calculateLaserLength(lockedItem));
+        }else{
+          this.laserLength.set(1000);
+        }
       }
     }, 1);
     this.loadNextSkill();
+  }
+
+  private calculateLaserLength(item: SkillBot) {
+    return this.height() - (item.yPos + this.barYPos() + item.height);
+  }
+  public clearLaser() {
+    this.spacePressed.set(0);
+    const items = this.skillsInArena();
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      item.locked = false;
+      item.start = true;
+    }
+  }
+
+  queueTimeout: any = null;
+  public queueLoadNextSkill() {
+    if (this.queueTimeout == null) {
+      this.queueTimeout = setTimeout(() => {
+        this.queueTimeout = null;
+        this.loadNextSkill();
+      }, this.randomIntBetween(50, 800));
+    }
   }
 
   public loadNextSkill() {

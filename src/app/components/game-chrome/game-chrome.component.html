@@ -1,33 +1,37 @@
 <div class="hirejc">
-  {{ spacePressed() }}
-  <div
-    class="arena"
-    [ngStyle]="{ width: width() + 'px', height: height() + 'px' }"
-  >
+  {{ score() }}
+  <div class="game">
+    <div *ngFor="let rejected of skillsRejected()">{{rejected.skill.name}}</div>
     <div
-      class="bar"
-      #bar
-      [ngStyle]="{
-        width: barWidth() + 'px',
-        height: barHeight() + 'px',
-        bottom: barYPos() + 'px'
-      }"
-    ></div>
-    <div
-      class="laser"
-      #laser
-      [ngStyle]="{
-        width: laserWidth() + 'px',
-        height: laserLength() + 'px',
-        bottom: barYPos() + barHeight() + 'px'
-      }"
-      [ngClass]="{ engaged: spacePressed() }"
-    ></div>
-    <app-skill-bot
-      *ngFor="let skill of skillsInArena()"
-      [xPos]="skill.xPos"
-      [yPos]="skill.yPos"
-      [skill]="skill"
-    ></app-skill-bot>
+      class="arena"
+      [ngStyle]="{ width: width() + 'px', height: height() + 'px' }"
+    >
+      <div
+        class="bar"
+        #bar
+        [ngStyle]="{
+          width: barWidth() + 'px',
+          height: barHeight() + 'px',
+          bottom: barYPos() + 'px'
+        }"
+      ></div>
+      <div
+        class="laser"
+        #laser
+        [ngStyle]="{
+          width: laserWidth() + 'px',
+          height: laserLength() + 'px',
+          bottom: barYPos() + barHeight() + 'px'
+        }"
+        [ngClass]="{ engaged: spacePressed() }"
+      ></div>
+      <app-skill-bot
+        *ngFor="let skill of skillsInArena()"
+        [xPos]="skill.xPos"
+        [yPos]="skill.yPos"
+        [skill]="skill"
+      ></app-skill-bot>
+    </div>
+    <div *ngFor="let captured of skillsCaptured()">{{captured.skill.name}}</div>
   </div>
 </div>

@@ -20,6 +20,10 @@
 @mixin theme($theme) {
   app-skill-bot {
     position: absolute;
+    display: block;
+    word-wrap: none;
+    word-break: keep-all;
+    text-wrap: nowrap;
   }
 
   @if mat.theme-has($theme, color) {
